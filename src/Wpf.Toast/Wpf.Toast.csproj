@@ -6,4 +6,8 @@
     <UseWPF>true</UseWPF>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="dotnetKyle.WpfDesignerHelper" Version="1.0.0" />
+  </ItemGroup>
+
 </Project>
