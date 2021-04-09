@@ -5,46 +5,33 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
         xmlns:local="clr-namespace:Wpf.Toast"
         mc:Ignorable="d" 
+        SizeToContent="WidthAndHeight"
         Title="Notification Popup"
-        SizeToContent="Height"
         WindowStyle="None"
         Background="Transparent" 
         AllowsTransparency="True"
-        ShowInTaskbar="False" 
-        ResizeMode="NoResize" 
-        Topmost="True" Foreground="WhiteSmoke">
+        ShowInTaskbar="False"
+        ResizeMode="NoResize"
+        Topmost="True" 
+        Foreground="WhiteSmoke"
+        Opacity="0">
     <Border Name="grdMain" d:DataContext="{d:DesignInstance Type=local:ToastNotification, IsDesignTimeCreatable=True}"
             Background="Black" BorderBrush="GhostWhite" BorderThickness="1">
-        <Grid>
-            <Grid.Resources>
-                <DataTemplate x:Key="defaultTemplate">
-                    <TextBlock Text="Unknown Notification Template Type"/>
-                </DataTemplate>
-                <DataTemplate x:Key="textTemplate">
-                    <TextBlock Text="{Binding Text}"/>
-                </DataTemplate>
-                <local:ToastNotificationTemplateSelector 
-                    x:Key="notificationTemplateSelector" 
-                    TextNotificationTemplate="{StaticResource textTemplate}"
-                    DefaultTemplate="{StaticResource textTemplate}"
-                    />
-            </Grid.Resources>
-            
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-
-            <ContentControl
-                ContentTemplateSelector="{StaticResource notificationTemplateSelector}" 
-                Content="{Binding Notification}"
-                
-                />
-
-            <Button Click="btnDismiss_Click" 
-                    Content="X" 
-                    ToolTip="Dismiss notification" 
-                    Grid.Column="1"/>
-        </Grid>
+        <Border.Resources>
+            <DataTemplate x:Key="defaultTemplate">
+                <TextBlock Text="Error: Unknown Notification Type"/>
+            </DataTemplate>
+            <DataTemplate x:Key="textTemplate">
+                <TextBlock Text="{Binding Text}"/>
+            </DataTemplate>
+            <local:ToastNotificationTemplateSelector
+                x:Key="notificationTemplateSelector" 
+                TextNotificationTemplate="{StaticResource textTemplate}"
+                DefaultTemplate="{StaticResource textTemplate}"/>
+        </Border.Resources>
+        <ContentControl
+            ContentTemplateSelector="{StaticResource notificationTemplateSelector}" 
+            Content="{Binding Notification}"
+            />
     </Border>
 </Window>
