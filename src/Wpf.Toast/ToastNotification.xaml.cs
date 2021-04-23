@@ -208,6 +208,10 @@ namespace Wpf.Toast
             dlg.VisibilityInSeconds = visibilityInSeconds;
             dlg.ShowInTaskbar = false;
             dlg.Show();
+            
+            // set focus back to owner so that Toast doesn't cause issues with what was happening on the owner
+            dlg.Owner.Focus();
+
             return dlg;
         }
 
