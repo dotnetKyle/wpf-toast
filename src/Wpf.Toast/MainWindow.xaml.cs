@@ -55,7 +55,7 @@ namespace Wpf.Toast
         private void _timer_Elapsed(object sender, ElapsedEventArgs e)
         {
             Dispatcher.Invoke(() => 
-                ToastNotification.ShowDialog(this, new TextNotification { Text = "Blah Blah Blah" }, 5)
+                ToastNotification.Show(this, new TextNotification { Text = "Blah Blah Blah" }, 3)
             );
         }
     }
