@@ -39,6 +39,7 @@ namespace Wpf.Toast
             }
 
             Loaded += ToastNotification_Loaded;
+            Unloaded += ToastNotification_Unloaded;
         }
 
 
@@ -49,12 +50,22 @@ namespace Wpf.Toast
         }
         public static readonly DependencyProperty VisibilityInSecondsProperty =
             DependencyProperty.Register(nameof(VisibilityInSeconds), typeof(int), typeof(ToastNotification), new PropertyMetadata(1));
-
-
-
+        
+        private void ToastNotification_Unloaded(object sender, RoutedEventArgs e)
+        {
+            // remove events on Owner
+            Owner.LocationChanged -= owner_LocationChanged;
+            Owner.SizeChanged -= owner_SizeChanged;
+            Owner.StateChanged -= Owner_StateChanged;
+        }
 
         private void ToastNotification_Loaded(object sender, RoutedEventArgs e)
         {
+            // setup events on Owner
+            Owner.LocationChanged += owner_LocationChanged;
+            Owner.SizeChanged += owner_SizeChanged;
+            Owner.StateChanged += Owner_StateChanged;
+
             // Configure animations on load
             appearStoryBoard = new Storyboard();
             disappearStoryBoard = new Storyboard();
@@ -119,9 +130,6 @@ namespace Wpf.Toast
         public static ToastNotification ShowDialog(Window owner, Notification notification, int visibilityInSeconds)
         {
             var dlg = new ToastNotification();
-            owner.LocationChanged += dlg.owner_LocationChanged;
-            owner.SizeChanged += dlg.owner_SizeChanged;
-            owner.StateChanged += dlg.Owner_StateChanged;
             dlg.Owner = owner;
 
             dlg.WindowStartupLocation = WindowStartupLocation.Manual;
@@ -130,11 +138,6 @@ namespace Wpf.Toast
             dlg.VisibilityInSeconds = visibilityInSeconds;
             dlg.Show();
             return dlg;
-        }
-
-        private void Owner_StateChanged(object sender, EventArgs e)
-        {
-            recalculatePosition();
         }
 
         void recalculatePosition()
@@ -170,6 +173,9 @@ namespace Wpf.Toast
             appearStoryBoard.Resume();
             disappearStoryBoard.Resume();
         }
+
+        void Owner_StateChanged(object sender, EventArgs e)
+            => recalculatePosition();
 
         void owner_SizeChanged(object sender, SizeChangedEventArgs e)
             => recalculatePosition();
