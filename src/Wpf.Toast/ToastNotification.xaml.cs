@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Timers;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -22,11 +23,17 @@ namespace Wpf.Toast
     /// </summary>
     public partial class ToastNotification : Window
     {
+        const int animationLengthInMs = 500;
         DoubleAnimationUsingKeyFrames appearAnimation;
         DoubleAnimationUsingKeyFrames disappearAnimation;
 
         Storyboard appearStoryBoard;
         Storyboard disappearStoryBoard;
+
+        System.Timers.Timer _hangTimer;
+
+        bool appearComplete = false;
+        bool disappearStarted = false;
 
         public ToastNotification()
         {
@@ -66,6 +73,9 @@ namespace Wpf.Toast
             Owner.SizeChanged += owner_SizeChanged;
             Owner.StateChanged += Owner_StateChanged;
 
+            this.MouseEnter += ToastNotification_MouseEnter;
+            this.MouseLeave += ToastNotification_MouseLeave;
+
             // Configure animations on load
             appearStoryBoard = new Storyboard();
             disappearStoryBoard = new Storyboard();
@@ -75,7 +85,7 @@ namespace Wpf.Toast
                 KeyFrames = new DoubleKeyFrameCollection
                 {
                     new SplineDoubleKeyFrame{ KeyTime = KeyTime.FromTimeSpan(TimeSpan.Zero), Value = 0 }, // from invisible
-                    new SplineDoubleKeyFrame{ KeyTime = KeyTime.FromTimeSpan(TimeSpan.FromSeconds(1)), Value = 1 } // to visible
+                    new SplineDoubleKeyFrame{ KeyTime = KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(animationLengthInMs)), Value = 1 } // to visible
                 }
             };
             disappearAnimation = new DoubleAnimationUsingKeyFrames
@@ -83,7 +93,7 @@ namespace Wpf.Toast
                 KeyFrames = new DoubleKeyFrameCollection
                 {
                     new SplineDoubleKeyFrame{ KeyTime = KeyTime.FromTimeSpan(TimeSpan.Zero), Value = 1 }, // from visible
-                    new SplineDoubleKeyFrame{ KeyTime = KeyTime.FromTimeSpan(TimeSpan.FromSeconds(1)), Value = 0 } // back to invisible
+                    new SplineDoubleKeyFrame{ KeyTime = KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(animationLengthInMs)), Value = 0 } // back to invisible
                 }
             };
 
@@ -102,17 +112,77 @@ namespace Wpf.Toast
             recalculatePosition();
 
             // On load, begin appear
-            appearStoryBoard.Begin();
+            appearStoryBoard.Begin(this, true);
+        }
+
+        private void ToastNotification_MouseLeave(object sender, MouseEventArgs e)
+        {
+            if (appearComplete == false)
+            {
+                // complete the appearance
+                completeAppear();
+            }
+            else if (disappearStarted == false)
+            {
+                // restart the hang time
+                _hangTimer.Start();
+            }
+            else
+            {
+                // restart the disappear 
+                disappearStoryBoard.Begin(this, true);
+            }
+        }
+
+        private void ToastNotification_MouseEnter(object sender, MouseEventArgs e)
+        {
+            if(appearComplete == false)
+            {
+                // stop the appear animation and make visible until mouse leave
+                appearStoryBoard.Stop(this);
+                this.Opacity = 1.0;
+            }
+            else if(disappearStarted == false)
+            {
+                // stop the hang time and leave visible until mouse leave
+                _hangTimer.Stop();
+            }
+            else
+            {
+                // stop the disappear and make visible until mouse leave
+                disappearStoryBoard.Stop(this);
+                this.Opacity = 1.0;
+            }
+        }
+
+        void completeAppear()
+        {
+            appearComplete = true;
+            _hangTimer = new Timer(VisibilityInSeconds * 1000);
+            _hangTimer.AutoReset = false;
+            _hangTimer.Elapsed += hangTimerElapsed;
+            _hangTimer.Start();
+        }
+        void beginDisappear()
+        {
+            disappearStarted = true;
+            disappearStoryBoard.Begin(this, true);
+        }
+        void hangTimerElapsed(object sender, System.Timers.ElapsedEventArgs e)
+        {
+            _hangTimer.Stop();
+            _hangTimer = null;
+            Dispatcher.Invoke(beginDisappear);
         }
 
         private async void AppearStoryBoard_Completed(object sender, EventArgs e)
         {
             try
             {
+                completeAppear();
                 // once appear is finished, beign disappear                
                 await Task.Delay(TimeSpan.FromSeconds(VisibilityInSeconds));
 
-                disappearStoryBoard.Begin();
             }
             catch(Exception ex)
             {
@@ -125,9 +195,9 @@ namespace Wpf.Toast
             this.Close();
         }
 
-        public static ToastNotification ShowDialog(Window owner, Notification notification)
-            => ShowDialog(owner, notification, 1);
-        public static ToastNotification ShowDialog(Window owner, Notification notification, int visibilityInSeconds)
+        public static ToastNotification Show(Window owner, Notification notification)
+            => Show(owner, notification, 2);
+        public static ToastNotification Show(Window owner, Notification notification, int visibilityInSeconds)
         {
             var dlg = new ToastNotification();
             dlg.Owner = owner;
@@ -136,14 +206,17 @@ namespace Wpf.Toast
 
             dlg.Notification = notification;
             dlg.VisibilityInSeconds = visibilityInSeconds;
+            dlg.ShowInTaskbar = false;
             dlg.Show();
             return dlg;
         }
 
         void recalculatePosition()
         {
-            appearStoryBoard.Pause();
-            disappearStoryBoard.Pause();
+            if(appearComplete == false)
+                appearStoryBoard.Pause(this);
+            if(disappearStarted == true)
+                disappearStoryBoard.Pause(this);
 
             WindowDimensions dim;
             if (Owner.WindowState == WindowState.Maximized)
@@ -170,8 +243,10 @@ namespace Wpf.Toast
                 this.Top = dim.CenterY - (this.Height / 2);
             }
 
-            appearStoryBoard.Resume();
-            disappearStoryBoard.Resume();
+            if (appearComplete == false)
+                appearStoryBoard.Resume(this);
+            if (disappearStarted == true)
+                disappearStoryBoard.Resume(this);
         }
 
         void Owner_StateChanged(object sender, EventArgs e)
