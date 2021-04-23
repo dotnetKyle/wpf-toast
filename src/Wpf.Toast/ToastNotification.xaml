@@ -18,9 +18,11 @@
     <Border Name="grdMain" d:DataContext="{d:DesignInstance Type=local:ToastNotification, IsDesignTimeCreatable=True}"
             Background="Black" BorderBrush="GhostWhite" BorderThickness="1">
         <Border.Resources>
+            <!-- This template is just in case your notification type doesn't exist -->
             <DataTemplate x:Key="defaultTemplate">
                 <TextBlock Text="Error: Unknown Notification Type"/>
             </DataTemplate>
+            <!-- Normal text template -->
             <DataTemplate x:Key="textTemplate">
                 <TextBlock Text="{Binding Text}"/>
             </DataTemplate>
