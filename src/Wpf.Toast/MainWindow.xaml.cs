@@ -37,6 +37,8 @@ namespace Wpf.Toast
         {
             try
             {
+                this.Left = 1;
+                this.Top = 1;
                 var notifs = await service.GetNotificationsAsync();
 
                 _timer = new Timer(2000);

@@ -92,16 +92,13 @@ namespace Wpf.Toast
 
             // On load, begin appear
             appearStoryBoard.Begin();
-            Debug.WriteLine("Starting appaear");
         }
 
         private async void AppearStoryBoard_Completed(object sender, EventArgs e)
         {
             try
             {
-                // once appear is finished, beign disappear
-                Debug.WriteLine("Starting disappaear");
-                
+                // once appear is finished, beign disappear                
                 await Task.Delay(TimeSpan.FromSeconds(VisibilityInSeconds));
 
                 disappearStoryBoard.Begin();
@@ -114,7 +111,6 @@ namespace Wpf.Toast
 
         private void DisappearStoryBoard_Completed(object sender, EventArgs e)
         {
-            Debug.WriteLine("Close");
             this.Close();
         }
 
@@ -125,6 +121,7 @@ namespace Wpf.Toast
             var dlg = new ToastNotification();
             owner.LocationChanged += dlg.owner_LocationChanged;
             owner.SizeChanged += dlg.owner_SizeChanged;
+            owner.StateChanged += dlg.Owner_StateChanged;
             dlg.Owner = owner;
 
             dlg.WindowStartupLocation = WindowStartupLocation.Manual;
@@ -135,29 +132,43 @@ namespace Wpf.Toast
             return dlg;
         }
 
+        private void Owner_StateChanged(object sender, EventArgs e)
+        {
+            recalculatePosition();
+        }
+
         void recalculatePosition()
         {
             appearStoryBoard.Pause();
             disappearStoryBoard.Pause();
 
-            var newLeft = Owner.Left;
-            var newTop = Owner.Top;
-            var newRight = Owner.Left + Owner.Width;
-            var newBottom = Owner.Top + Owner.Height;
+            WindowDimensions dim;
+            if (Owner.WindowState == WindowState.Maximized)
+            {
+                var handle = new System.Windows.Interop.WindowInteropHelper(Owner).Handle;
+                var screen = System.Windows.Forms.Screen.FromHandle(handle);
+                
+                dim = WindowDimensions.Create(screen.WorkingArea.Left, screen.WorkingArea.Top, screen.WorkingArea.Width, screen.WorkingArea.Height);
+            }
+            else if(Owner.WindowState == WindowState.Normal)
+            {
+                dim = WindowDimensions.Create(Owner.Left, Owner.Top, Owner.ActualWidth, Owner.ActualHeight);
+            }
+            else
+            {
+                // if minimized, do no reposition and leave paused
+                return;
+            }
 
             // if supposed to be centered toast
-            if(true)
+            if (true)
             {
-                var centerX = newRight - newLeft;
-                var centerY = newBottom - newTop;
-
-                this.Left = centerX - (this.Width / 2);
-                this.Top = centerY - (this.Height / 2);
+                this.Left = dim.CenterX - (this.Width / 2);
+                this.Top = dim.CenterY - (this.Height / 2);
             }
 
             appearStoryBoard.Resume();
             disappearStoryBoard.Resume();
-            Debug.WriteLine($"Repositioned: {this.Left},{this.Top}");
         }
 
         void owner_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -179,6 +190,61 @@ namespace Wpf.Toast
             Close();
         }
     }
+    public class WindowDimensions
+    {
+        private WindowDimensions() { }
+
+        public static WindowDimensions Create(double left, double top, double width, double height)
+        {
+            if (width < 0)
+                throw new ArgumentException("Width cannot be less than zero", nameof(width));
+            if (height < 0)
+                throw new ArgumentException("Height cannot be less than zero", nameof(height));
+
+            var w = new WindowDimensions
+            { 
+                Left = left,
+                Top = top,
+                Width = width,
+                Height = height,
+                Right = left + width,
+                Bottom = top + height
+            };
+
+            //Debug.WriteLine($"{left},{top},{width},{height}");
+            //Debug.WriteLine($" #####################################################\r\n");
+            //Debug.WriteLine($"{w.Left}x,{w.Top}y");
+            //Debug.WriteLine($"           <------- {w.Width} ------->");
+            //Debug.WriteLine($"       |-------------------------------|    ^");
+            //Debug.WriteLine($"       |                               |    |");
+            //Debug.WriteLine($"       |                               |    |");
+            //Debug.WriteLine($"       |                               |  {w.Height}");
+            //Debug.WriteLine($"       |                               |    |");
+            //Debug.WriteLine($"       |                               |    |");
+            //Debug.WriteLine($"       |-------------------------------|    v");
+            //Debug.WriteLine($"                                    {w.Right}x,{w.Bottom}y");
+            //Debug.WriteLine($"      center: {w.CenterX}x,{w.CenterY}y");
+            //Debug.WriteLine("");
+            //Debug.WriteLine("### Math: #################");
+            //Debug.WriteLine($"Right => {left}l + {width}w = {w.Right}");
+            //Debug.WriteLine($"Bottom => {top}t + {height}h = {w.Bottom}");
+            //Debug.WriteLine($"CenterX => {w.Left}L + ({w.Width}W / 2) = {w.CenterX}");
+            //Debug.WriteLine($"CenterY => {w.Top}B + ({w.Height}H / 2) = {w.CenterY}");
+            //Debug.WriteLine($"\r\n #####################################################");
+
+            return w;
+        }
+
+        public double Left { get; private set; }
+        public double Right { get; private set; }
+        public double Top { get; private set; }
+        public double Bottom { get; private set; }
+        public double Width { get; private set; }
+        public double Height { get; private set; }
+        public double CenterX => Left + (Width / 2);
+        public double CenterY => Top + (Height / 2);
+    }
+
     public class ToastNotificationTemplateSelector : DataTemplateSelector
     {
         public DataTemplate DefaultTemplate { get; set; }
